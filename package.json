@@ -3,20 +3,25 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "nodemon --ext ts --exec ts-node src/index.ts",
-    "build": "tsc"
+    "build": "tsc --project tsconfig.json && tsc-alias -p tsconfig.json"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/CKYWEB/INFO-7255-demo.git"
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "etag": "^1.8.1",
+    "express": "^4.21.2",
+    "jsonschema": "^1.5.0",
+    "mongoose": "^8.10.0"
   },
   "devDependencies": {
+    "@types/etag": "^1.8.3",
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.1",
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.10",
     "typescript": "^5.7.3"
   }
 }
