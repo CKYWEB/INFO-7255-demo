@@ -1,4 +1,5 @@
 import type { RequestHandler } from "express";
+import { validationResult } from "express-validator";
 
 export const noPayload: RequestHandler = (req, res, next) => {
   const query = req.query as Record<string, unknown>;
@@ -15,3 +16,16 @@ export const noPayload: RequestHandler = (req, res, next) => {
 
   next();
 }
+
+export const validateRequest: RequestHandler = (req, res, next) => {
+  const errors = validationResult(req);
+
+  if (!errors.isEmpty()) {
+    res.status(400).json({ errors: errors.array() });
+
+    return;
+  }
+
+  next();
+};
+
