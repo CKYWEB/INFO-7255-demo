@@ -13,53 +13,70 @@ export const createFood: RequestHandler = async (req, res) => {
     return;
   }
 
-  const food = await handleCreateFood(req.body.name);
+  try {
+    const food = await handleCreateFood(req.body.name);
 
-  res.status(201).json(food);
+    res.status(201).json(food);
+  } catch (error) {
+    res.status(503).end();
+  }
+
 };
 
 export const getAllFoods: RequestHandler = async (req, res) => {
-  const foods = await handleGetAllFoods();
-  const responseJSON = JSON.stringify(foods);
-  const eTag = etag(responseJSON);
+  try {
+    const foods = await handleGetAllFoods();
+    const responseJSON = JSON.stringify(foods);
+    const eTag = etag(responseJSON);
 
-  if (req.headers["if-none-match"] === eTag) {
-    res.status(304).end();
+    if (req.headers["if-none-match"] === eTag) {
+      res.status(304).end();
 
-    return;
+      return;
+    }
+
+    res.set("ETag", eTag).json(foods);
+  } catch (error) {
+    res.status(503).end();
   }
-
-  res.set("ETag", eTag).json(foods);
 };
 
 export const getFoodById: RequestHandler = async (req, res) => {
-  const food = await handleGetFoodById(req.params.id);
+  try {
+    const food = await handleGetFoodById(req.params.id);
 
-  if (!food) {
-    res.status(404).json({ message: "Food not found" });
+    if (!food) {
+      res.status(404).json({message: "Food not found"});
 
-    return;
+      return;
+    }
+
+    const responseJSON = JSON.stringify(food);
+    const eTag = etag(responseJSON);
+
+    if (req.headers["if-none-match"] === eTag) {
+      res.status(304).end();
+
+      return;
+    }
+
+    res.set("ETag", eTag).json(food);
+  } catch (error) {
+    res.status(503).end();
   }
-
-  const responseJSON = JSON.stringify(food);
-  const eTag = etag(responseJSON);
-
-  if (req.headers["if-none-match"] === eTag) {
-    res.status(304).end();
-
-    return;
-  }
-
-  res.set("ETag", eTag).json(food);
 };
 
 export const deleteFood: RequestHandler = async (req, res) => {
-  const food = await handleDeleteFood(req.params.id);
-  if (!food) {
-    res.status(404).json({message: "Food not found"});
+  try {
+    const food = await handleDeleteFood(req.params.id);
+    if (!food) {
+      res.status(404).json({message: "Food not found"});
 
-    return;
+      return;
+    }
+
+    res.status(204).end();
+  } catch (error) {
+    res.status(503).end();
   }
-
-  res.status(204).end();
 };
