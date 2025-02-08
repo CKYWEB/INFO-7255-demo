@@ -29,7 +29,7 @@ export const getAllFoods: RequestHandler = async (req, res) => {
     const responseJSON = JSON.stringify(foods);
     const eTag = etag(responseJSON);
 
-    if (req.headers["if-none-match"] === eTag) {
+    if (`"${req.headers["if-none-match"]}"` === eTag) {
       res.status(304).end();
 
       return;
