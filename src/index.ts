@@ -1,12 +1,12 @@
 import express from "express";
-import foodRoutes from "@/routes/food";
+import foodRoutes from "@/routes/plan";
 import mongoose from "mongoose";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use("/food", foodRoutes);
+app.use("/api", foodRoutes);
 
 mongoose
   .connect("mongodb://localhost:27017/foodLibrary")
