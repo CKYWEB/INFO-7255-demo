@@ -33,16 +33,8 @@ const PlanSchema = new mongoose.Schema({
   creationDate: { type: String, required: true }
 });
 
-// Ensure `id` is always equal to `_id.toString()`
-PlanSchema.pre("save", function (next) {
-  this.id = this._id.toString();
-  next();
-});
-
-// Modify `toJSON` to include `id` and remove `_id` & `__v`
 PlanSchema.set("toJSON", {
   transform: (_doc, ret) => {
-    ret.id = ret._id.toString();
     delete ret._id;
     delete ret.__v;
     return ret;
