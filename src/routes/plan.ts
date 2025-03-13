@@ -1,5 +1,5 @@
 import express, { RequestHandler } from "express";
-import { createPlan, deletePlan, getPlan } from "@/controllers/plan";
+import { createPlan, deletePlan, getPlan, updatePlan } from "@/controllers/plan";
 import { noPayload, verifyToken } from "@/middleware";
 
 const router = express.Router();
@@ -11,6 +11,7 @@ router.use(verifyToken);
 router.get("/", noPayload, getPlan);
 router.get("/:id", noPayload, getPlan);
 router.post("/", createPlan);
+router.patch("/:id", updatePlan);
 router.delete("/:id", deletePlan);
 router.all("/", handleMethodNotAllowed);
 
