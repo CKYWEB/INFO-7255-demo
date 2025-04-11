@@ -10,8 +10,10 @@
     "url": "git+https://github.com/CKYWEB/INFO-7255-demo.git"
   },
   "dependencies": {
+    "dotenv": "^16.4.7",
     "etag": "^1.8.1",
     "express": "^4.21.2",
+    "google-auth-library": "^9.15.1",
     "jsonschema": "^1.5.0",
     "mongoose": "^8.10.0"
   },
