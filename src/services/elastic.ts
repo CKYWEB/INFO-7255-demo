@@ -22,7 +22,7 @@ export const initializeElastic = async () => {
             objectId: { type: 'keyword' },
             objectType: { type: 'keyword' },
             planType: { type: 'keyword' },
-            creationDate: { type: 'date' },
+            creationDate: { type: 'keyword' },
             _org: { type: 'keyword' }
           }
         },
@@ -163,6 +163,16 @@ export const updatePlanIndex = async (plan: any) => {
 
 export const deletePlanIndex = async (objectId: string) => {
   try {
+    const exists = await client.exists({
+      index: PLAN_INDEX,
+      id: objectId,
+    });
+
+    if (!exists) {
+      console.log("Plan index not found")
+      return;
+    }
+
     await client.delete({
       index: PLAN_INDEX,
       id: objectId,
