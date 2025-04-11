@@ -15,6 +15,7 @@ export const initializeQueue = async () => {
     connection = await connect(RABBITMQ_URL);
     channel = await connection.createChannel();
 
+    await purgeQueue();
     await channel.assertQueue(QUEUE_NAME, { durable: true });
 
     console.log('RabbitMQ queue initialized');
@@ -96,8 +97,25 @@ export const closeQueue = async () => {
   if (connection) await connection.close();
 };
 
+export const purgeQueue = async () => {
+  try {
+    if (!channel) {
+      throw new Error('RabbitMQ channel not initialized');
+    }
+
+    await channel.purgeQueue(QUEUE_NAME);
+    console.log(`Queue '${QUEUE_NAME}' has been purged successfully`);
+
+    return true;
+  } catch (error) {
+    console.error('Error purging queue:', error);
+    throw error;
+  }
+};
+
 export default {
   initializeQueue,
   sendToQueue,
-  closeQueue
+  closeQueue,
+  purgeQueue,
 };
