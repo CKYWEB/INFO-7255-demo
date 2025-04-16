@@ -3,7 +3,7 @@ import planRoutes from "@/routes/plan";
 import searchRoutes from "@/routes/search";
 import authRoutes from "@/routes/auth";
 import mongoose from "mongoose";
-import { initializeElastic } from "@/services/elastic";
+import { initializeElasticsearch } from "@/services/elastic";
 import { initializeQueue } from "@/services/queue";
 import dotenv from "dotenv";
 
@@ -23,7 +23,7 @@ mongoose
   .then(async () => {
     console.log("MongoDB Connected");
 
-    await initializeElastic();
+    await initializeElasticsearch();
     await initializeQueue();
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);

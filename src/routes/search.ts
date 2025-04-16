@@ -1,5 +1,5 @@
 import express from "express";
-import { searchPlansByQuery, getPlanServices } from "@/controllers/search";
+import {searchPlansByQuery, searchPlansByService} from "@/controllers/search";
 import { verifyToken } from "@/middleware";
 
 const router = express.Router();
@@ -10,6 +10,6 @@ router.use(verifyToken); // Apply authentication to all search routes
 router.get("/plans", searchPlansByQuery);
 
 // Get services by plan ID
-router.get("/plans/:planId/services", getPlanServices);
+router.get("/plans/:planId", searchPlansByService);
 
 export default router;

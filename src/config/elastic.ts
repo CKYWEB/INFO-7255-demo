@@ -5,6 +5,7 @@ dotenv.config();
 export const elasticConfig = {
   node: process.env.ELASTICSEARCH_NODE || 'http://localhost:9200',
   auth: {
-    apiKey: process.env.ELASTICSEARCH_API_KEY,
+    username: process.env.ELASTICSEARCH_USERNAME,
+    password: process.env.ELASTICSEARCH_PASSWORD,
   }
 };

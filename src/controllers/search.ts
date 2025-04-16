@@ -1,40 +1,44 @@
 import { RequestHandler } from "express";
-import { searchPlans, getLinkedServices } from "@/services/plan";
+import { searchPlans, searchPlansByServiceName } from "@/services/elastic";
 
 export const searchPlansByQuery: RequestHandler = async (req, res) => {
   try {
-    const { query } = req.query;
-
-    if (!query || typeof query !== 'string') {
-      res.status(400).json({ message: "Query parameter is required" });
-
-      return;
-    }
+    const query = req.body.query || {
+      query: {
+        match_all: {}
+      }
+    };
 
     const results = await searchPlans(query);
 
-    res.json(results);
+    res.json({
+      count: results.length,
+      results
+    });
   } catch (error) {
-    console.error('Error in search controller:', error);
-    res.status(500).json({ message: "Error processing search request" });
+    console.error("Error searching plans:", error);
+    res.status(503).json({ message: "Search service unavailable" });
   }
 };
 
-export const getPlanServices: RequestHandler = async (req, res) => {
+export const searchPlansByService: RequestHandler = async (req, res) => {
   try {
-    const { planId } = req.params;
+    const serviceName = req.query.name as string;
 
-    if (!planId) {
-      res.status(400).json({ message: "Plan ID is required" });
-
+    if (!serviceName) {
+      res.status(400).json({ message: "Service name is required" });
       return;
     }
 
-    const services = await getLinkedServices(planId);
+    // Use the dedicated function for searching by service name using parent-child
+    const results = await searchPlansByServiceName(serviceName);
 
-    res.json(services);
+    res.json({
+      count: results.length,
+      results
+    });
   } catch (error) {
-    console.error('Error getting plan services:', error);
-    res.status(500).json({ message: "Error retrieving plan services" });
+    console.error("Error searching plans by service:", error);
+    res.status(503).json({ message: "Search service unavailable" });
   }
 };

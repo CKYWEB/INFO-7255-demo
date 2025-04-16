@@ -7,48 +7,55 @@ const client = new Client({
 
 // Index name for plans
 const PLAN_INDEX = 'plans';
-const PLAN_SERVICE_INDEX = 'plan_services';
 
-export const initializeElastic = async () => {
+export const initializeElasticsearch = async () => {
   try {
-    const planIndexExists = await client.indices.exists({ index: PLAN_INDEX });
-    const planServiceIndexExists = await client.indices.exists({ index: PLAN_SERVICE_INDEX });
+    const planIndexExists = await client.indices.exists({
+      index: PLAN_INDEX
+    });
 
     if (!planIndexExists) {
       await client.indices.create({
         index: PLAN_INDEX,
-        mappings: {
-          properties: {
-            objectId: { type: 'keyword' },
-            objectType: { type: 'keyword' },
-            planType: { type: 'keyword' },
-            creationDate: { type: 'keyword' },
-            _org: { type: 'keyword' }
+        body: {
+          mappings: {
+            properties: {
+              plan_service_relation: {
+                type: "join",
+                relations: {
+                  "plan": "service" // plan is parent, service is child
+                }
+              },
+              objectId: { type: "keyword" },
+              objectType: { type: "keyword" },
+              planType: { type: "keyword" },
+              creationDate: { type: "keyword" },
+              _org: { type: "keyword" },
+              planCostShares: {
+                properties: {
+                  deductible: { type: "integer" },
+                  copay: { type: "integer" },
+                  objectId: { type: "keyword" },
+                  objectType: { type: "keyword" },
+                  _org: { type: "keyword" }
+                }
+              },
+              serviceName: { type: "text" },
+              serviceObjectId: { type: "keyword" },
+              deductible: { type: "integer" },
+              copay: { type: "integer" }
+            }
           }
-        },
+        }
       });
-      console.log(`Created ${PLAN_INDEX} index`);
+
+      console.log(`Created ${PLAN_INDEX} index with parent-child relationship`);
     }
 
-    if (!planServiceIndexExists) {
-      await client.indices.create({
-        index: PLAN_SERVICE_INDEX,
-        mappings: {
-          properties: {
-            objectId: { type: 'keyword' },
-            objectType: { type: 'keyword' },
-            _org: { type: 'keyword' },
-            planId: { type: 'keyword' },
-            serviceName: { type: 'text' }
-          }
-        },
-      });
-      console.log(`Created ${PLAN_SERVICE_INDEX} index`);
-    }
-
-    console.log('Elasticsearch indices initialized');
+    console.log("Elasticsearch initialized successfully");
   } catch (error) {
-    console.error('Error initializing Elasticsearch indices:', error);
+    console.error("Error initializing Elasticsearch:", error);
+    throw error;
   }
 };
 
@@ -58,11 +65,10 @@ export const indexPlan = async (plan: any) => {
       index: PLAN_INDEX,
       id: plan.objectId,
       document: {
-        objectId: plan.objectId,
-        objectType: plan.objectType,
-        planType: plan.planType,
-        creationDate: plan.creationDate,
-        _org: plan._org
+        ...plan,
+        plan_service_relation: {
+          name: "plan"
+        }
       },
       refresh: true
     });
@@ -70,14 +76,20 @@ export const indexPlan = async (plan: any) => {
     if (plan.linkedPlanServices && Array.isArray(plan.linkedPlanServices)) {
       for (const service of plan.linkedPlanServices) {
         await client.index({
-          index: PLAN_SERVICE_INDEX,
+          index: PLAN_INDEX,
           id: service.objectId,
+          routing: plan.objectId, // Important: routing ensures child is stored with parent
           document: {
-            objectId: service.objectId,
+            serviceObjectId: service.objectId,
             objectType: service.objectType,
             _org: service._org,
-            planId: plan.objectId,
-            serviceName: service.linkedService.name
+            serviceName: service.linkedService.name,
+            deductible: service.planserviceCostShares.deductible,
+            copay: service.planserviceCostShares.copay,
+            plan_service_relation: {
+              name: "service",
+              parent: plan.objectId
+            }
           },
           refresh: true
         });
@@ -86,92 +98,42 @@ export const indexPlan = async (plan: any) => {
 
     return true;
   } catch (error) {
-    console.error('Error indexing plan:', error);
+    console.error("Error indexing plan:", error);
     throw error;
   }
 };
 
-export const updatePlanIndex = async (plan: any) => {
+// Update a plan document
+export const updatePlanIndex = async (objectId: string, plan: any) => {
   try {
-    const exists = await client.exists({
+    await deletePlanFromIndex(objectId);
+    await indexPlan(plan);
+
+    return true;
+  } catch (error) {
+    console.error("Error updating plan in index:", error);
+    throw error;
+  }
+};
+
+export const deletePlanFromIndex = async (objectId: string) => {
+  try {
+    await client.deleteByQuery({
       index: PLAN_INDEX,
-      id: plan.objectId
-    });
-
-    if (!exists) {
-      return await indexPlan(plan);
-    }
-
-    await client.update({
-      index: PLAN_INDEX,
-      id: plan.objectId,
-      doc: {
-        objectId: plan.objectId,
-        objectType: plan.objectType,
-        planType: plan.planType,
-        creationDate: plan.creationDate,
-        _org: plan._org
-      },
-      refresh: true
-    });
-
-    if (plan.linkedPlanServices && Array.isArray(plan.linkedPlanServices)) {
-      const existingServices = await client.search({
-        index: PLAN_SERVICE_INDEX,
+      body: {
         query: {
-          term: {
-            planId: plan.objectId
+          has_parent: {
+            parent_type: "plan",
+            query: {
+              match: {
+                objectId: objectId
+              }
+            }
           }
         }
-      });
-
-      const existingServiceIds = existingServices.hits.hits.map((hit) => hit._id);
-      const updatedServiceIds = plan.linkedPlanServices.map((service: any) => service.objectId);
-
-      for (const serviceId of existingServiceIds) {
-        if (!updatedServiceIds.includes(serviceId)) {
-          await client.delete({
-            index: PLAN_SERVICE_INDEX,
-            id: serviceId,
-            refresh: true
-          });
-        }
-      }
-
-      for (const service of plan.linkedPlanServices) {
-        await client.index({
-          index: PLAN_SERVICE_INDEX,
-          id: service.objectId,
-          document: {
-            objectId: service.objectId,
-            objectType: service.objectType,
-            _org: service._org,
-            planId: plan.objectId,
-            serviceName: service.linkedService.name
-          },
-          refresh: true
-        });
-      }
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error updating plan index:', error);
-    throw error;
-  }
-};
-
-export const deletePlanIndex = async (objectId: string) => {
-  try {
-    const exists = await client.exists({
-      index: PLAN_INDEX,
-      id: objectId,
+      },
+      refresh: true
     });
-
-    if (!exists) {
-      console.log("Plan index not found")
-      return;
-    }
 
     await client.delete({
       index: PLAN_INDEX,
@@ -179,65 +141,48 @@ export const deletePlanIndex = async (objectId: string) => {
       refresh: true
     });
 
-    await client.deleteByQuery({
-      index: PLAN_SERVICE_INDEX,
-      query: {
-        term: {
-          planId: objectId
-        }
-      },
-      refresh: true
-    });
-
     return true;
   } catch (error) {
-    console.error('Error deleting plan index:', error);
+    console.error("Error deleting plan from index:", error);
     throw error;
   }
 };
 
-export const searchPlans = async (query: string) => {
+export const searchPlans = async (query: any) => {
   try {
-    const result = await client.search({
+    const response = await client.search({
       index: PLAN_INDEX,
-      query: {
-        multi_match: {
-          query,
-          fields: ['planType', 'objectType']
-        }
-      }
+      body: query
     });
 
-    return result.hits.hits;
+    return response.hits.hits.map(hit => hit._source);
   } catch (error) {
-    console.error('Error searching plans:', error);
+    console.error("Error searching plans:", error);
     throw error;
   }
 };
 
-export const getServicesByPlanId = async (planId: string) => {
+export const searchPlansByServiceName = async (serviceName: string) => {
   try {
-    const result = await client.search({
-      index: PLAN_SERVICE_INDEX,
-      query: {
-        term: {
-          planId
+    const response = await client.search({
+      index: PLAN_INDEX,
+      body: {
+        query: {
+          has_child: {
+            type: "service",
+            query: {
+              match: {
+                serviceName: serviceName
+              }
+            }
+          }
         }
       }
     });
 
-    return result.hits.hits;
+    return response.hits.hits.map(hit => hit._source);
   } catch (error) {
-    console.error('Error getting services by plan ID:', error);
+    console.error("Error searching plans by service:", error);
     throw error;
   }
-};
-
-export default {
-  initializeElastic,
-  indexPlan,
-  updatePlanIndex,
-  deletePlanIndex,
-  searchPlans,
-  getServicesByPlanId
 };

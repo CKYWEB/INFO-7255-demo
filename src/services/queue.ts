@@ -1,6 +1,6 @@
 import {connect, Channel, ConsumeMessage, ChannelModel} from 'amqplib';
 import dotenv from 'dotenv';
-import elasticService from './elastic';
+import {deletePlanFromIndex, indexPlan, updatePlanIndex} from './elastic';
 
 dotenv.config();
 
@@ -65,13 +65,13 @@ const startConsumer = async () => {
 
           switch (message.operation) {
             case 'CREATE':
-              await elasticService.indexPlan(message.data);
+              await indexPlan(message.data);
               break;
             case 'UPDATE':
-              await elasticService.updatePlanIndex(message.data);
+              await updatePlanIndex(message.data.objectId, message.data);
               break;
             case 'DELETE':
-              await elasticService.deletePlanIndex(message.data.objectId);
+              await deletePlanFromIndex(message.data.objectId);
               break;
             default:
               console.warn(`Unknown operation: ${message.operation}`);

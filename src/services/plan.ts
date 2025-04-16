@@ -1,6 +1,5 @@
 import Plan from "@/models/Plan";
 import queueService from "@/services/queue";
-import elasticService from "@/services/elastic";
 
 export const handleCreatePlan = async (planData: any) => {
   if (await Plan.findOne({ objectId: planData.objectId })) {
@@ -74,22 +73,4 @@ export const handleUpdatePlan = async (objectId: string, updateData: any) => {
   await queueService.sendToQueue('UPDATE', updatedPlan);
 
   return updatedPlan;
-};
-
-export const searchPlans = async (query: string) => {
-  try {
-    return elasticService.searchPlans(query);
-  } catch (error) {
-    console.error('Error searching plans:', error);
-    throw error;
-  }
-};
-
-export const getLinkedServices = async (planId: string) => {
-  try {
-    return elasticService.getServicesByPlanId(planId);
-  } catch (error) {
-    console.error('Error getting linked services:', error);
-    throw error;
-  }
 };
