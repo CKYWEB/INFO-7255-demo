@@ -1,11 +1,16 @@
-import Plan from "@/models/Plan"
+import Plan from "@/models/Plan";
+import queueService from "@/services/queue";
 
 export const handleCreatePlan = async (planData: any) => {
   if (await Plan.findOne({ objectId: planData.objectId })) {
     throw new Error("Duplicate plan data");
   }
 
-  return await Plan.create(planData);
+  const plan = await Plan.create(planData);
+
+  await queueService.sendToQueue('CREATE', plan);
+
+  return plan;
 };
 
 export const handleGetPlanById = async (objectId?: string) => {
@@ -13,7 +18,14 @@ export const handleGetPlanById = async (objectId?: string) => {
 };
 
 export const handleDeletePlan = async (objectId: string) => {
-  return Plan.findOneAndDelete({objectId});
+  const plan = await Plan.findOne({ objectId });
+
+  if (!plan) return null;
+
+  await Plan.findOneAndDelete({ objectId });
+  await queueService.sendToQueue('DELETE', { objectId });
+
+  return plan;
 };
 
 export const handleUpdatePlan = async (objectId: string, updateData: any) => {
@@ -55,6 +67,10 @@ export const handleUpdatePlan = async (objectId: string, updateData: any) => {
   }
   
   handleObjectIdChanges(plan, updateData);
-  
-  return await plan.save();
+
+  const updatedPlan = await plan.save();
+
+  await queueService.sendToQueue('UPDATE', updatedPlan);
+
+  return updatedPlan;
 };
